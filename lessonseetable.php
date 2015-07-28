@@ -40,11 +40,14 @@ class LessonSeeTable extends WP_List_Table
 
         $sql = "SELECT DISTINCT {$wpdb->prefix}lesson_see.id, {$wpdb->prefix}lesson_see.id_lesson, {$wpdb->prefix}posts.post_title, {$wpdb->prefix}lesson_see.id_user, {$wpdb->prefix}users.display_name, {$wpdb->prefix}lesson_see.see, {$wpdb->prefix}lesson_see.date";
         if(is_plugin_active('groups/groups.php'))
-            $sql .= ", {$wpdb->prefix}groups_group.name AS group_name";
+            $sql .= ", {$wpdb->prefix}groups_group.name AS group_name, {$wpdb->prefix}groups_group.group_id AS id_group";
         $sql .= " FROM {$wpdb->prefix}lesson_see INNER JOIN {$wpdb->prefix}posts ON {$wpdb->prefix}lesson_see.id_lesson = {$wpdb->prefix}posts.ID INNER JOIN {$wpdb->prefix}users ON {$wpdb->prefix}users.ID = {$wpdb->prefix}lesson_see.id_user";
         if(is_plugin_active('groups/groups.php'))
-            $sql .= " INNER JOIN {$wpdb->prefix}groups_user_group ON {$wpdb->prefix}groups_user_group.user_id = {$wpdb->prefix}lesson_see.id_user INNER JOIN {$wpdb->prefix}groups_group ON {$wpdb->prefix}groups_user_group.group_id = {$wpdb->prefix}groups_group.group_id WHERE {$wpdb->prefix}groups_group.name NOT LIKE 'Registered'";
-        if ( ! empty( $_REQUEST['s'] ) ) {
+            $sql .= " INNER JOIN {$wpdb->prefix}groups_user_group ON {$wpdb->prefix}groups_user_group.user_id = {$wpdb->prefix}lesson_see.id_user INNER JOIN {$wpdb->prefix}groups_group ON {$wpdb->prefix}groups_user_group.group_id = {$wpdb->prefix}groups_group.group_id WHERE {$wpdb->prefix}groups_group.name NOT LIKE 'Registered'";        
+        if (is_plugin_active('groups/groups.php') && ! empty( $_REQUEST['id_group'] ) ) {
+            $sql .= " AND {$wpdb->prefix}groups_group.group_id = ".intval($_REQUEST['id_group']);
+        }
+        elseif ( ! empty( $_REQUEST['s'] ) ) {
             $sql .= " AND ({$wpdb->prefix}groups_group.name LIKE '%".$_REQUEST['s']."%' OR {$wpdb->prefix}groups_group.group_id = ".intval($_REQUEST['s']).")";
         }
         if ( ! empty( $_REQUEST['orderby'] ) ) {
@@ -98,7 +101,9 @@ class LessonSeeTable extends WP_List_Table
     {
         global $wpdb;
  
-        $sql = "SELECT COUNT(*) FROM {$wpdb->prefix}lesson_see";
+        $sql = "SELECT DISTINCT COUNT(*) FROM {$wpdb->prefix}lesson_see";
+        if(is_plugin_active('groups/groups.php'))
+            $sql .= " INNER JOIN {$wpdb->prefix}groups_user_group ON {$wpdb->prefix}groups_user_group.user_id = {$wpdb->prefix}lesson_see.id_user INNER JOIN {$wpdb->prefix}groups_group ON {$wpdb->prefix}groups_user_group.group_id = {$wpdb->prefix}groups_group.group_id WHERE {$wpdb->prefix}groups_group.name NOT LIKE 'Registered'";
  
         return $wpdb->get_var( $sql );
     }
@@ -114,6 +119,7 @@ class LessonSeeTable extends WP_List_Table
         case 'id_lesson':
         case 'date':
         case 'group_name':
+        case 'id_group':
             return $item[ $column_name ];
         default:
             return print_r( $item, true ); //Show the whole array for troubleshooting purposes
@@ -155,6 +161,11 @@ class LessonSeeTable extends WP_List_Table
     function column_post_title( $item )
     {
         return "<a href=\"".get_permalink( $item['id_lesson'])."\">". $item['post_title'] . "</a>";
+    }
+
+    function column_group_name( $item )
+    {
+        return "<a href=\"?page=".esc_attr( $_REQUEST['page'] )."&id_group=".$item['id_group']."\" >".$item['group_name']."</a>";
     }
     
     function get_columns() {
@@ -206,7 +217,7 @@ class LessonSeeTable extends WP_List_Table
         $per_page     = $this->get_items_per_page( 'lessonsee_per_page', 10 );
         $current_page = $this->get_pagenum();
         $total_items  = self::record_count();
-        $hidden = array('id', 'id_user', 'id_lesson');
+        $hidden = array('id', 'id_user', 'id_lesson', 'id_group');
 
         $this->set_pagination_args( [
             'total_items' => $total_items, //WE have to calculate the total number of items

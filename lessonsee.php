@@ -30,9 +30,6 @@ class LessonSee
         
         include_once('lessonseetable.php');
         
-        register_activation_hook(__FILE__, array('LessonSee', 'install'));
-        register_uninstall_hook(__FILE__, array('LessonSee', 'uninstall'));
-        
         //insert couple lesson/user
         add_action( 'the_post', array(__CLASS__,'insert_user_lesson') );
         //update see lesson
@@ -82,8 +79,10 @@ class LessonSee
                     $row = $wpdb->get_row("SELECT * FROM {$wpdb->prefix}lesson_see WHERE id_lesson = '$post_object->ID' AND id_user = '$user->ID'");
                     if (is_null($row)) {
                         if($row->see == false) {
-                            $wpdb->update("{$wpdb->prefix}lesson_see", array('see' => true, 'date' => current_time('mysql')), array('id_lesson' => $post->ID, 'id_user' => $user->ID));                    
-                            $array = array('success' => true, 'message' => 'La leçon a été prise.');
+                            if($wpdb->update("{$wpdb->prefix}lesson_see", array('see' => true, 'date' => current_time('mysql')), array('id_lesson' => $post->ID, 'id_user' => $user->ID)))   
+                                $array = array('success' => true, 'message' => 'La leçon a été prise.');
+                            else
+                                $array = array('success' => false, 'message' => 'Problème sur la bdd.');
                         } else
                             $array = array('success' => true, 'message' => 'Leçon déjà prise.');
                     } else
@@ -215,4 +214,7 @@ add_action( 'plugins_loaded', function () {
     LessonSee::get_instance();
 } );
 endif;
+
+register_activation_hook(__FILE__, array('LessonSee', 'install'));
+register_uninstall_hook(__FILE__, array('LessonSee', 'uninstall'));
 ?>
